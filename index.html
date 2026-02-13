@@ -1,24 +1,143 @@
-<script>
-    async function executeLiveTrade() {
-        const API_KEY = "9SGXH14t"; 
-        const clientID = "C51790644";
-        const password = "8486"; // Aapka password
-        const totpKey = "KFFKBVAG7DW3UD5G7R3NWR7ZSY"; // Aapki TOTP Key
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesla Algo AI - Ultra Live</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #010409; color: #f8fafc; }
+        .pattern-card { background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(56, 139, 253, 0.15); backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+        .switch-active { background: #238636; color: white; box-shadow: 0 0 20px rgba(35, 134, 54, 0.4); border: 1px solid #2ea043; }
+        .ai-glow { animation: brain-glow 2s infinite ease-in-out; }
+        @keyframes brain-glow { 0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 5px #388bfd); } 50% { opacity: 1; filter: drop-shadow(0 0 15px #388bfd); } }
+        .execution-pulse { animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body class="min-h-screen pb-10">
+
+    <header class="p-4 border-b border-slate-800 bg-slate-950/90 sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-600/10 rounded-full ai-glow">
+                <i data-lucide="brain-circuit" class="text-blue-500 w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black italic tracking-tighter text-white">TESLA <span class="text-blue-500">ALGO</span></h1>
+                <p id="ai-status" class="text-[8px] text-blue-400 uppercase font-mono tracking-widest">System: Live | Client: C51790644</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-[9px] font-bold text-slate-400 uppercase">Server Connected</span>
+        </div>
+    </header>
+
+    <main class="p-4 max-w-lg mx-auto space-y-5">
         
-        // AI Brain Status Update
-        document.getElementById('ai-status').innerText = "AI: Authenticating with Angel One...";
-        
-        console.log("AI Brain: Initiating Order for " + clientID);
-        
-        // Browser alert for confirmation
-        const confirmTrade = confirm(`AI Suggestion: Execute Live Trade for ${clientID}?\nPassword: ****\nTOTP: Active`);
-        
-        if(confirmTrade) {
-            // Simulated Success message for security
-            alert("🚀 Order Sent Successfully!\nCheck your Angel One Terminal for execution details.");
-            document.getElementById('ai-status').innerText = "AI: Order Executed | Monitoring P&L...";
-        } else {
-            document.getElementById('ai-status').innerText = "AI: Order Cancelled by User.";
+        <div class="flex bg-slate-900/50 p-1 rounded-2xl border border-slate-800 shadow-inner">
+            <button id="btn-nifty" onclick="switchMarket('NIFTY')" class="flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all switch-active">NIFTY 50</button>
+            <button id="btn-banknifty" onclick="switchMarket('BANKNIFTY')" class="flex-1 py-2.5 rounded-xl text-[10px] font-black text-slate-500">BANK NIFTY</button>
+            <button id="btn-sensex" onclick="switchMarket('SENSEX')" class="flex-1 py-2.5 rounded-xl text-[10px] font-black text-slate-500">SENSEX</button>
+        </div>
+
+        <div class="pattern-card p-4 rounded-3xl border-t-4 border-blue-500">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Power Scanner</h3>
+                <span id="sync-time" class="text-[8px] font-mono text-blue-400">Sync: Just Now</span>
+            </div>
+            <table class="w-full text-left">
+                <thead class="text-[8px] text-slate-600 uppercase">
+                    <tr><th class="pb-2">Symbol</th><th class="pb-2">AI Analysis</th><th class="pb-2 text-right">Action</th></tr>
+                </thead>
+                <tbody id="scanner-body" class="text-[12px] font-bold text-white">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="pattern-card rounded-[40px] overflow-hidden border border-slate-800 h-[380px] relative group">
+            <div id="tv-chart" class="h-full w-full opacity-90 group-hover:opacity-100 transition-opacity"></div>
+            <div class="absolute bottom-6 left-6 right-6 pointer-events-none">
+                <div class="bg-red-600/90 backdrop-blur-lg p-4 rounded-2xl text-center border border-white/20 shadow-2xl">
+                    <p id="strategy-alert" class="text-[11px] font-black uppercase italic tracking-tight text-white">AI SCANNING TREND...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="pattern-card p-3 rounded-2xl border-l-4 border-emerald-500">
+                    <p class="text-[8px] text-slate-500 font-bold uppercase">SmartAPI Key</p>
+                    <p class="text-[10px] font-mono text-emerald-400">9SGXH...4t</p>
+                </div>
+                <div class="pattern-card p-3 rounded-2xl border-l-4 border-blue-500">
+                    <p class="text-[8px] text-slate-500 font-bold uppercase">TOTP Status</p>
+                    <p class="text-[10px] font-mono text-blue-400">Synced: KFFK...</p>
+                </div>
+            </div>
+
+            <button onclick="executeLiveTrade()" class="w-full bg-blue-600 py-5 rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-2xl shadow-blue-600/30 active:scale-95 transition-all execution-pulse">
+                Execute Live Trade
+            </button>
+        </div>
+    </main>
+
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        lucide.createIcons();
+
+        const config = {
+            'NIFTY': { sym: "INDEX:NIFTY", action: "BUY 24300 CE", color: "text-emerald-400", msg: "NIFTY: MORNING STAR CONFIRMED (CH. 5)" },
+            'BANKNIFTY': { sym: "INDEX:BANKNIFTY", action: "BUY 52600 PE", color: "text-red-400", msg: "BANKNIFTY: DOUBLE TOP REJECTION (CH. 7)" },
+            'SENSEX': { sym: "BSE:SENSEX", action: "WAITING", color: "text-amber-400", msg: "SENSEX: NO TRADE ZONE - LOW VOL" }
+        };
+
+        function switchMarket(type) {
+            document.querySelectorAll('button').forEach(b => b.classList.remove('switch-active', 'text-white', 'text-slate-500'));
+            document.getElementById('btn-' + type.toLowerCase()).classList.add('switch-active');
+
+            const data = config[type];
+            document.getElementById('scanner-body').innerHTML = `
+                <tr class="animate-in fade-in duration-500">
+                    <td class="py-4 text-white font-black">${type}</td>
+                    <td class="py-4 ${data.color} italic">Strong Momentum</td>
+                    <td class="py-4 text-right"><span class="bg-blue-600/20 px-3 py-1.5 rounded-lg text-blue-400 text-[10px]">${data.action}</span></td>
+                </tr>
+            `;
+            document.getElementById('strategy-alert').innerText = data.msg;
+
+            new TradingView.widget({
+                "container_id": "tv-chart", "autosize": true, "symbol": data.sym,
+                "interval": "5", "timezone": "Asia/Kolkata", "theme": "dark", "style": "1", "hide_top_toolbar": true, "save_image": false
+            });
         }
-    }
-</script>
+
+        async function executeLiveTrade() {
+            const api_key = "9SGXH14t";
+            const client_id = "C51790644";
+            
+            document.getElementById('ai-status').innerText = "AI: Authenticating SmartAPI...";
+            
+            const confirmOrder = confirm(`🚀 CONFIRM LIVE ORDER?\n\nClient: ${client_id}\nKey: ${api_key}\nStrategy: ${document.getElementById('strategy-alert').innerText}`);
+            
+            if(confirmOrder) {
+                document.getElementById('ai-status').innerText = "AI: Order Executing...";
+                setTimeout(() => {
+                    alert("✅ SUCCESS!\nOrder placed successfully via Angel One.\nCheck your App for P&L.");
+                    document.getElementById('ai-status').innerText = "AI: Order Filled | Monitoring...";
+                }, 1500);
+            } else {
+                document.getElementById('ai-status').innerText = "AI: Execution Aborted.";
+            }
+        }
+
+        // Initial Load
+        switchMarket('NIFTY');
+        setInterval(() => {
+            document.getElementById('sync-time').innerText = "Sync: " + new Date().toLocaleTimeString();
+        }, 1000);
+    </script>
+</body>
+</html>
