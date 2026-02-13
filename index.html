@@ -3,26 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Power Scanner Bar - SMC Edition</title>
+    <title>Power Scanner Bar - Multi-Index SMC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        body { background-color: #0d0e12; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; }
-        .scanner-card { background-color: #16181d; border-radius: 12px; border: 1px solid #23262d; }
+        body { background-color: #0b0c10; color: #ffffff; font-family: 'Inter', sans-serif; }
+        .scanner-card { background-color: #15181e; border: 1px solid #23262d; border-radius: 12px; overflow: hidden; }
         
-        .status-green { color: #4ade80; font-weight: bold; }
-        .status-red { color: #f87171; font-weight: bold; }
+        /* Table Styles */
+        th { text-align: left; color: #5a5e67; font-size: 10px; font-weight: 800; padding: 12px; text-transform: uppercase; border-bottom: 1px solid #23262d; }
+        td { padding: 12px; font-size: 12px; border-bottom: 1px solid #1c1f26; }
         
-        /* Signal Box Animation */
-        .signal-alert { padding: 15px; border-radius: 8px; font-weight: 800; text-align: center; animation: pulse 1.5s infinite; margin-top: 10px; display: none; }
-        .buy-alert { background: #15803d; border: 2px solid #22c55e; }
-        .sell-alert { background: #b91c1c; border: 2px solid #ef4444; }
+        /* Signal Boxes */
+        .status-up { color: #4ade80; font-weight: bold; }
+        .status-down { color: #f87171; font-weight: bold; }
         
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        /* Chart Placeholder */
+        #tv-chart { background: #111317; height: 350px; border-radius: 8px; position: relative; border: 1px solid #23262d; margin: 15px; }
+        
+        .signal-alert { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; padding: 20px; border-radius: 12px; text-align: center; display: none; z-index: 50; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .buy-alert { background: #064e3b; border: 2px solid #10b981; }
+        .sell-alert { background: #7f1d1d; border: 2px solid #ef4444; }
 
-        .trade-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; font-size: 11px; }
-        .info-box { background: #1c1e24; padding: 10px; border-radius: 6px; border: 1px solid #2d3139; }
-        
         /* API Switch */
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -30,163 +32,240 @@
         .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #3b82f6; }
         input:checked + .slider:before { transform: translateX(20px); }
+        
+        @keyframes pulse { 0% { scale: 1; } 50% { scale: 1.05; } 100% { scale: 1; } }
+        .pulse-anim { animation: pulse 1.5s infinite; }
     </style>
 </head>
-<body class="p-4 md:p-10 max-w-4xl mx-auto">
+<body class="p-2 md:p-6 lg:p-8">
 
-    <div class="scanner-card shadow-2xl overflow-hidden">
-        <!-- Header with Logo -->
-        <div class="p-5 flex justify-between items-center border-b border-[#23262d] bg-[#1a1d24]">
+    <div class="max-w-6xl mx-auto scanner-card">
+        <!-- Header -->
+        <div class="p-4 bg-[#1a1d24] flex justify-between items-center border-b border-[#23262d]">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-600 to-yellow-300 flex items-center justify-center border border-yellow-500 shadow-lg">
-                    <span class="text-[7px] font-black text-black text-center leading-tight">SMC<br>CRYPTO</span>
+                <div class="w-10 h-10 rounded-full border border-yellow-500 flex items-center justify-center bg-gradient-to-tr from-yellow-700 to-yellow-400">
+                   <span class="text-[8px] font-black text-black text-center">SMC<br>CRYPTO</span>
                 </div>
                 <div>
-                    <h1 class="text-sm font-black uppercase tracking-widest">Power Scanner Bar</h1>
-                    <p class="text-[9px] text-blue-400 font-bold uppercase">TeslaAlgo Pro AI</p>
+                    <h1 class="text-sm font-black uppercase tracking-widest">Power Scanner Pro</h1>
+                    <p class="text-[9px] text-gray-500 uppercase">Multi-Index AI Analysis</p>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="text-right hidden sm:block">
-                    <span class="text-[9px] text-gray-500 block">TRADES</span>
-                    <span id="limit" class="text-xs font-bold text-white">0 / 5</span>
+            <div class="flex items-center gap-6">
+                <div class="text-right">
+                    <span class="text-[10px] text-gray-500 block">TRADES LEFT</span>
+                    <span id="limit-text" class="text-blue-400 font-bold">5 / 5</span>
                 </div>
                 <label class="switch">
-                    <input type="checkbox" id="api-toggle" onchange="toggleSystem()">
+                    <input type="checkbox" id="api-toggle" onchange="toggleApi()">
                     <span class="slider"></span>
                 </label>
             </div>
         </div>
 
-        <!-- Scanning Table -->
+        <!-- Multi-Index Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead class="text-[10px] text-gray-500 uppercase bg-black/20">
+            <table>
+                <thead>
                     <tr>
-                        <th class="p-4">Index</th>
-                        <th class="p-4">Trend</th>
-                        <th class="p-4">Strike Selection</th>
-                        <th class="p-4">Alert</th>
+                        <th>Index</th>
+                        <th>Trend (Ch. 3)</th>
+                        <th>Momentum</th>
+                        <th>SMC Signal</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
-                <tbody class="text-xs divide-y divide-gray-800">
+                <tbody>
                     <tr>
-                        <td class="p-4 font-bold">NIFTY 50</td>
-                        <td id="n-trend" class="p-4">---</td>
-                        <td id="n-strike" class="p-4 text-gray-500 italic">Connect API...</td>
-                        <td id="n-alert" class="p-4">---</td>
+                        <td class="font-bold">NIFTY 50</td>
+                        <td id="nifty-trend">---</td>
+                        <td id="nifty-mom">---</td>
+                        <td id="nifty-smc">Wait...</td>
+                        <td><button onclick="triggerIndex('NIFTY')" class="bg-blue-600/20 text-blue-400 px-2 py-1 rounded text-[10px] font-bold">SCAN</button></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold">BANKNIFTY</td>
+                        <td id="bnf-trend">---</td>
+                        <td id="bnf-mom">---</td>
+                        <td id="bnf-smc">Wait...</td>
+                        <td><button onclick="triggerIndex('BANKNIFTY')" class="bg-blue-600/20 text-blue-400 px-2 py-1 rounded text-[10px] font-bold">SCAN</button></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold">SENSEX</td>
+                        <td id="sensex-trend">---</td>
+                        <td id="sensex-mom">---</td>
+                        <td id="sensex-smc">Wait...</td>
+                        <td><button onclick="triggerIndex('SENSEX')" class="bg-blue-600/20 text-blue-400 px-2 py-1 rounded text-[10px] font-bold">SCAN</button></td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- Main Signal Display -->
-        <div class="p-6 bg-[#111317] min-h-[250px] flex flex-col items-center justify-center relative">
-            <div id="loading-text" class="text-gray-600 text-xs">Waiting for Market Rejection (Ch. 10)...</div>
-            
-            <!-- Signal Alert Box -->
-            <div id="signal-box" class="signal-alert w-full max-w-sm">
-                <h2 id="signal-title" class="text-lg">SIGNAL DETECTED</h2>
-                <div class="trade-info-grid">
-                    <div class="info-box"><p class="text-gray-400">ENTRY PRICE</p><p id="entry-p" class="text-sm font-bold">---</p></div>
-                    <div class="info-box"><p class="text-gray-400">STOP LOSS</p><p id="sl-p" class="text-red-400 font-bold">---</p></div>
-                    <div class="info-box"><p class="text-gray-400">TARGET 1 (1:2)</p><p id="t1-p" class="text-green-400 font-bold">---</p></div>
-                    <div class="info-box"><p class="text-gray-400">TARGET 2 (1:5+)</p><p id="t2-p" class="text-green-500 font-bold">---</p></div>
+        <!-- Chart Section -->
+        <div id="tv-chart">
+            <!-- Embedded TradingView Style Container -->
+            <div class="absolute inset-0 p-4 opacity-40">
+                <div class="h-full w-full border-l border-b border-gray-800 flex items-end">
+                    <div class="w-full flex items-end gap-1 h-3/4 px-4">
+                        <div class="bg-green-500/50 w-full" style="height: 40%"></div>
+                        <div class="bg-green-500/50 w-full" style="height: 60%"></div>
+                        <div class="bg-red-500/50 w-full" style="height: 30%"></div>
+                        <div class="bg-green-500/50 w-full" style="height: 80%"></div>
+                        <div class="bg-red-500/50 w-full" style="height: 40%"></div>
+                        <div class="bg-green-500/50 w-full" style="height: 90%"></div>
+                    </div>
                 </div>
             </div>
+            
+            <div class="absolute top-4 left-4 text-[10px] text-gray-500 uppercase font-bold tracking-widest">
+                Real-Time SMC Liquidity Chart
+            </div>
 
-            <!-- Manual Trigger for Testing (Bullish/Bearish) -->
-            <div id="test-btns" class="hidden absolute bottom-4 flex gap-2">
-                <button onclick="triggerTrade('BUY')" class="text-[9px] bg-green-900/40 border border-green-500 px-2 py-1 rounded">Test Bullish</button>
-                <button onclick="triggerTrade('SELL')" class="text-[9px] bg-red-900/40 border border-red-500 px-2 py-1 rounded">Test Bearish</button>
+            <!-- Signal Alert Overlay -->
+            <div id="signal-box" class="signal-alert pulse-anim">
+                <h2 id="alert-title" class="text-lg font-black mb-3">BULLISH DETECTED</h2>
+                
+                <div class="grid grid-cols-2 gap-2 text-[10px] text-left">
+                    <div class="bg-black/30 p-2 rounded">
+                        <span class="text-gray-400 block uppercase">Selection</span>
+                        <span id="strike-type" class="font-bold text-yellow-400 text-xs">ITM (SAFE)</span>
+                    </div>
+                    <div class="bg-black/30 p-2 rounded">
+                        <span class="text-gray-400 block uppercase">Strike Price</span>
+                        <span id="strike-name" class="font-bold text-xs">BNF 48200 CE</span>
+                    </div>
+                    <div class="bg-black/30 p-2 rounded">
+                        <span class="text-gray-400 block uppercase">Entry @</span>
+                        <span id="entry-val" class="font-bold text-xs">₹245.00</span>
+                    </div>
+                    <div class="bg-black/30 p-2 rounded border border-red-500/30">
+                        <span class="text-red-400 block uppercase">Stop Loss</span>
+                        <span id="sl-val" class="font-bold text-xs">₹210.00</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex gap-2">
+                    <div class="flex-1 bg-green-500/20 p-2 rounded border border-green-500/30 text-[9px]">
+                        <span class="block text-green-400">Target 1 (1:2)</span>
+                        <span id="t1-val" class="font-bold">₹315.00</span>
+                    </div>
+                    <div class="flex-1 bg-green-500/40 p-2 rounded border border-green-400 text-[9px]">
+                        <span class="block text-green-200">Target 2 (1:5)</span>
+                        <span id="t2-val" class="font-bold">₹420.00+</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Action Bar -->
-        <div class="p-5 bg-[#1a1d24] border-t border-[#23262d] flex justify-between items-center">
-            <div class="hidden md:block">
-                <p class="text-[10px] text-gray-500 uppercase font-bold">Strategy Status</p>
-                <p class="text-xs text-blue-400 font-bold">1:2 to 1:10 Growth Active</p>
+        <!-- Bottom Execution -->
+        <div class="p-4 bg-[#1a1d24] border-t border-[#23262d] flex justify-between items-center">
+            <div class="flex gap-4">
+                <button onclick="triggerTradeType('ITM')" class="text-[9px] bg-blue-900/30 border border-blue-500/50 px-3 py-1 rounded text-blue-400 font-bold uppercase">ITM (Pro)</button>
+                <button onclick="triggerTradeType('ATM')" class="text-[9px] bg-gray-800 border border-gray-600 px-3 py-1 rounded text-gray-300 font-bold uppercase">ATM (Normal)</button>
+                <button onclick="triggerTradeType('OTM')" class="text-[9px] bg-purple-900/30 border border-purple-500/50 px-3 py-1 rounded text-purple-400 font-bold uppercase">OTM (Hero-Zero)</button>
             </div>
-            <div class="flex gap-3 w-full md:w-auto">
-                <button id="exec-btn" disabled class="flex-1 md:flex-none bg-blue-600 opacity-20 px-8 py-3 rounded-lg font-black text-xs uppercase tracking-tighter transition-all">Execute Now</button>
-                <button onclick="location.reload()" class="bg-gray-800 px-4 py-3 rounded-lg text-xs font-bold uppercase">Exit All</button>
+            <div class="flex gap-3">
+                <button id="exec-btn" disabled class="bg-blue-600 opacity-20 px-8 py-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all">Execute Trade</button>
+                <button onclick="exitAll()" class="bg-red-900/20 text-red-500 border border-red-500/30 px-4 py-3 rounded-lg text-[10px] font-bold">EXIT ALL</button>
             </div>
         </div>
     </div>
 
     <script>
-        let tradesUsed = 0;
-        let isSystemOn = false;
+        let tradesLeft = 5;
+        let isApiOn = false;
 
-        function speakAlert() {
+        function playVoice() {
             const speech = new SpeechSynthesisUtterance("trade lanaka time ho gaya ready ho jau chella");
             speech.lang = 'hi-IN';
             window.speechSynthesis.speak(speech);
         }
 
-        function toggleSystem() {
-            isSystemOn = document.getElementById('api-toggle').checked;
-            if(isSystemOn) {
-                document.getElementById('loading-text').innerHTML = `<span class="animate-pulse">Scanning SMC Liquidity & Rejection Zones...</span>`;
-                document.getElementById('test-btns').classList.remove('hidden');
-                // Simulate auto-detection after 5s
-                setTimeout(() => { if(isSystemOn) triggerTrade('BUY'); }, 5000);
+        function toggleApi() {
+            isApiOn = document.getElementById('api-toggle').checked;
+            if(isApiOn) {
+                alert("API Connected. Monitoring Nifty, BankNifty & Sensex (Ch. 1-16 Rules).");
+                startSimulation();
             } else {
                 location.reload();
             }
         }
 
-        function triggerTrade(type) {
-            if(tradesUsed >= 5) return;
-            speakAlert();
+        function startSimulation() {
+            document.getElementById('nifty-trend').innerHTML = `<span class="status-up">Bullish</span>`;
+            document.getElementById('bnf-trend').innerHTML = `<span class="status-up">Bullish</span>`;
+            document.getElementById('sensex-trend').innerHTML = `<span class="status-up">Bullish</span>`;
+            document.getElementById('nifty-smc').innerText = "Liquidity Found";
+            document.getElementById('bnf-smc').innerText = "Liquidity Found";
+        }
 
+        function triggerTradeType(type) {
+            if(!isApiOn) { alert("Pehle API connect kijiye!"); return; }
+            if(tradesLeft <= 0) { alert("Daily limit over!"); return; }
+
+            playVoice();
             const box = document.getElementById('signal-box');
-            const nTrend = document.getElementById('n-trend');
-            const nStrike = document.getElementById('n-strike');
-            const nAlert = document.getElementById('n-alert');
-            const title = document.getElementById('signal-title');
-            
+            const title = document.getElementById('alert-title');
+            const stType = document.getElementById('strike-type');
+            const stName = document.getElementById('strike-name');
+            const entryVal = document.getElementById('entry-val');
+            const slVal = document.getElementById('sl-val');
+            const t1Val = document.getElementById('t1-val');
+            const t2Val = document.getElementById('t2-val');
+
             box.style.display = 'block';
-            document.getElementById('loading-text').style.display = 'none';
+            box.className = "signal-alert buy-alert pulse-anim";
+            title.innerText = "BULLISH BREAKOUT (BUY CE)";
 
-            // Strike Selection Logic (ITM Preference for Growth)
-            if(type === 'BUY') {
-                box.className = "signal-alert buy-alert w-full max-w-sm";
-                title.innerText = "BULLISH (BUY CE)";
-                nTrend.innerHTML = `<span class="status-green">UPTREND (Stage 2)</span>`;
-                nStrike.innerHTML = `<span class="status-green">22200 CE (ITM)</span>`;
-                nAlert.innerHTML = `<span class="status-green animate-pulse">BUY NOW</span>`;
-                
-                // Set Prices
-                document.getElementById('entry-p').innerText = "₹120.00";
-                document.getElementById('sl-p').innerText = "₹105.00";
-                document.getElementById('t1-p').innerText = "₹150.00";
-                document.getElementById('t2-p').innerText = "₹220.00+";
+            if(type === 'ITM') {
+                stType.innerText = "ITM (In The Money) - Recommended";
+                stType.className = "font-bold text-green-400 text-xs";
+                stName.innerText = "BANKNIFTY 48200 CE";
+                entryVal.innerText = "₹245.00";
+                slVal.innerText = "₹210.00";
+                t1Val.innerText = "₹315.00";
+                t2Val.innerText = "₹450.00+";
+            } else if(type === 'ATM') {
+                stType.innerText = "ATM (At The Money)";
+                stType.className = "font-bold text-yellow-400 text-xs";
+                stName.innerText = "BANKNIFTY 48400 CE";
+                entryVal.innerText = "₹130.00";
+                slVal.innerText = "₹105.00";
+                t1Val.innerText = "₹180.00";
+                t2Val.innerText = "₹260.00+";
             } else {
-                box.className = "signal-alert sell-alert w-full max-w-sm";
-                title.innerText = "BEARISH (BUY PE)";
-                nTrend.innerHTML = `<span class="status-red">DOWNTREND (Stage 4)</span>`;
-                nStrike.innerHTML = `<span class="status-red">22300 PE (ITM)</span>`;
-                nAlert.innerHTML = `<span class="status-red animate-pulse">SELL NOW</span>`;
-
-                document.getElementById('entry-p').innerText = "₹115.00";
-                document.getElementById('sl-p').innerText = "₹130.00";
-                document.getElementById('t1-p').innerText = "₹85.00";
-                document.getElementById('t2-p').innerText = "₹40.00+";
+                stType.innerText = "OTM (Out of The Money) - High Risk";
+                stType.className = "font-bold text-purple-400 text-xs";
+                stName.innerText = "BANKNIFTY 48800 CE";
+                entryVal.innerText = "₹45.00";
+                slVal.innerText = "₹25.00";
+                t1Val.innerText = "₹85.00";
+                t2Val.innerText = "₹150.00+";
             }
 
             const btn = document.getElementById('exec-btn');
             btn.disabled = false;
             btn.classList.remove('opacity-20');
             btn.onclick = () => {
-                tradesUsed++;
-                document.getElementById('limit').innerText = `${tradesUsed} / 5`;
-                alert(`Trade Executed! \nFollow Ch. 14 Trailing SL Rule.\nTarget 1: ₹${type === 'BUY' ? '150' : '85'}`);
+                tradesLeft--;
+                document.getElementById('limit-text').innerText = `${tradesLeft} / 5`;
+                alert("Trade Executed. Check your Trailing SL (Ch. 14).");
                 box.style.display = 'none';
-                document.getElementById('loading-text').style.display = 'block';
                 btn.disabled = true;
                 btn.classList.add('opacity-20');
+            };
+        }
+
+        function triggerIndex(name) {
+            if(!isApiOn) return;
+            alert(`Scanning ${name} for SMC Rejection...`);
+            setTimeout(() => triggerTradeType('ITM'), 2000);
+        }
+
+        function exitAll() {
+            if(confirm("Exit all positions?")) {
+                alert("Sare trades bech diye gaye hain. Profit safe!");
+                location.reload();
             }
         }
     </script>
