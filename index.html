@@ -1,87 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfect Trade Dashboard</title>
-    <style>
-        body {
-            background-color: #0d1117;
-            color: #white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .card {
-            background: #161b22;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #30363d;
-            text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .card h3 { color: #8b949e; margin-bottom: 10px; font-size: 14px; }
-        .card .value { font-size: 24px; font-weight: bold; }
+import time
+import pyotp
+from SmartApi import SmartConnect
+
+# --- CREDENTIALS (Aapne jo provide kiye) ---
+API_KEY = "9SGXH14t"
+CLIENT_ID = "C51790644"
+PWD = "8486"
+TOTP_SECRET = "KFFKBVAG7DW3UD5G7R3NWR7ZSY"
+
+# --- STRATEGY SETTINGS ---
+SYMBOL_NAME = "NIFTY"
+LOT_SIZE = 25        # Nifty current lot size
+RISK_REWARD = 2      # 1:2 Target
+STOP_LOSS_PTS = 20   # 20 points ka SL
+TARGET_PTS = 40      # 40 points ka Target
+
+# 1. Login Process
+obj = SmartConnect(api_key=API_KEY)
+token = pyotp.TOTP(TOTP_SECRET).now()
+session = obj.generateSession(CLIENT_ID, PWD, token)
+
+if session['status']:
+    print("✅ Login Successful!")
+else:
+    print("❌ Login Failed. Check credentials.")
+    exit()
+
+def get_atm_strike(index_price):
+    """Nifty ke liye 50 ke multiple mein ATM strike nikalna"""
+    return round(index_price / 50) * 50
+
+def place_trade(strike, side):
+    """Live Market mein Order Place karne ka function"""
+    # Note: Trading Symbol format index aur expiry ke hisaab se hota hai
+    # Example: NIFTY20MAR2422100CE
+    trading_symbol = f"{SYMBOL_NAME}27MAR26{strike}{side}" 
+    
+    print(f"🚀 Signal Found! Placing {side} Order for {trading_symbol}")
+    
+    order_params = {
+        "variety": "NORMAL",
+        "tradingsymbol": trading_symbol,
+        "symboltoken": "TOKEN_FROM_MASTER_DATA", # Token list se lena hoga
+        "transactiontype": "BUY",
+        "exchange": "NFO",
+        "ordertype": "MARKET",
+        "producttype": "INTRADAY",
+        "duration": "DAY",
+        "quantity": LOT_SIZE
+    }
+    # order_id = obj.placeOrder(order_params)
+    # print(f"Order Placed ID: {order_id}")
+
+# --- MAIN LOOP (Live Market) ---
+print("Running Strategy: Bottom Fishing...")
+
+while True:
+    try:
+        # 1. Live Price Fetch Karein (LTP)
+        # Dummy price for logic (Real API se 'obj.ltp' use karein)
+        ltp_data = obj.ltp("NSE", "Nifty 50", "99926000") # Index token
+        current_price = ltp_data['data']['lasttradedprice']
         
-        .bullish { color: #238636; } /* Green */
-        .bearish { color: #da3633; } /* Red */
-        .neutral { color: #1f6feb; } /* Blue */
-
-        .signal-box {
-            grid-column: span 2;
-            background: linear-gradient(145deg, #1f6feb, #111);
-            color: white;
-        }
-        .status-badge {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            background: rgba(255,255,255,0.1);
-        }
-    </style>
-</head>
-<body>
-
-    <h2 style="text-align: center; color: white;">🚀 PRO TRADING TERMINAL</h2>
-
-    <div class="dashboard">
-        <div class="card">
-            <h3>MARKET TREND</h3>
-            <div class="value bullish">BULLISH ⬆️</div>
-            <span class="status-badge">Strong Momentum</span>
-        </div>
-
-        <div class="card">
-            <h3>RSI (14)</h3>
-            <div class="value" style="color: #f1e05a;">62.5</div>
-            <span class="status-badge">Healthy Range</span>
-        </div>
-
-        <div class="card signal-box">
-            <h3>RECOMMENDED STRIKE (ITM)</h3>
-            <div class="value">NIFTY 23450 CE</div>
-            <p>Target: +40 pts | SL: -20 pts</p>
-        </div>
-
-        <div class="card">
-            <h3>DAILY P&L</h3>
-            <div class="value bullish">+₹4,500</div>
-            <span class="status-badge">2 Trades Won</span>
-        </div>
-
-        <div class="card">
-            <h3>AUTO-EXIT TIMER</h3>
-            <div class="value" style="color: #ff7b72;">15:15 PM</div>
-            <span class="status-badge">Active</span>
-        </div>
-    </div>
-
-</body>
-</html>
+        # 2. Strategy Logic: Bottom Kaise Pakde?
+        # Logic: Agar RSI 30 ke niche hai (Oversold) aur green candle banti hai
+        rsi_value = 25 # Yeh aapko indicator library (ta-lib) se nikalna hoga
+        
+        if rsi_value < 30: # BOTTOM SIGNAL
+            atm_strike = get_atm_strike(current_price)
+            place_trade(atm_strike, "CE")
+            break # Ek baar trade hone par loop stop (Discipline)
+            
+        time.sleep(1) # API rate limit ke liye
+        
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        break
+            
