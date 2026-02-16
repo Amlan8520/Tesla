@@ -1,79 +1,84 @@
-import time
-import pyotp
-from SmartApi import SmartConnect
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Algo-Trader Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white font-sans">
 
-# --- CREDENTIALS (Aapne jo provide kiye) ---
-API_KEY = "9SGXH14t"
-CLIENT_ID = "C51790644"
-PWD = "8486"
-TOTP_SECRET = "KFFKBVAG7DW3UD5G7R3NWR7ZSY"
+    <nav class="bg-gray-800 border-b border-gray-700 p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-400"><i class="fas fa-robot mr-2"></i>Angel One Algo-Bot</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-green-400 flex items-center"><i class="fas fa-circle text-xs mr-2"></i> Live Market</span>
+                <button class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold">STOP BOT</button>
+            </div>
+        </div>
+    </nav>
 
-# --- STRATEGY SETTINGS ---
-SYMBOL_NAME = "NIFTY"
-LOT_SIZE = 25        # Nifty current lot size
-RISK_REWARD = 2      # 1:2 Target
-STOP_LOSS_PTS = 20   # 20 points ka SL
-TARGET_PTS = 40      # 40 points ka Target
+    <div class="container mx-auto p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+                <p class="text-gray-400 text-sm">Active Index</p>
+                <h2 class="text-3xl font-bold text-blue-300">NIFTY 50</h2>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+                <p class="text-gray-400 text-sm">Strategy</p>
+                <h2 class="text-3xl font-bold text-purple-400">RSI Bottom Finder</h2>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+                <p class="text-gray-400 text-sm">Total P&L (Today)</p>
+                <h2 class="text-3xl font-bold text-green-400">+ ₹2,450.00</h2>
+            </div>
+        </div>
 
-# 1. Login Process
-obj = SmartConnect(api_key=API_KEY)
-token = pyotp.TOTP(TOTP_SECRET).now()
-session = obj.generateSession(CLIENT_ID, PWD, token)
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Bot Controls</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center bg-gray-700 p-3 rounded">
+                        <span>Index Switch</span>
+                        <select class="bg-gray-600 border-none rounded px-2 py-1 outline-none text-sm">
+                            <option>NIFTY 50</option>
+                            <option>BANKNIFTY</option>
+                            <option>SENSEX</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-700 p-3 rounded">
+                        <span>Quantity (Lots)</span>
+                        <input type="number" value="1" class="bg-gray-600 w-16 text-center rounded outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-700 p-3 rounded text-center">
+                            <span class="text-xs text-gray-400 uppercase">Stop Loss</span>
+                            <p class="font-bold text-red-400">20 pts</p>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded text-center">
+                            <span class="text-xs text-gray-400 uppercase">Target</span>
+                            <p class="font-bold text-green-400">40 pts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-if session['status']:
-    print("✅ Login Successful!")
-else:
-    print("❌ Login Failed. Check credentials.")
-    exit()
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Live Activity Log</h3>
+                <div class="h-48 overflow-y-auto space-y-2 text-sm font-mono">
+                    <p class="text-gray-400">[09:15:01] System Login Successful.</p>
+                    <p class="text-blue-400">[09:30:15] Scanning NIFTY Bottom...</p>
+                    <p class="text-yellow-400">[10:05:45] RSI is 32 (Approaching Bottom)</p>
+                    <p class="text-green-400 font-bold">[10:12:30] BUY SIGNAL: RSI 28, NIFTY 22050 CE Bought @ ₹105</p>
+                    <p class="text-gray-300">[10:45:10] Target Hit! Exit at ₹145.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-def get_atm_strike(index_price):
-    """Nifty ke liye 50 ke multiple mein ATM strike nikalna"""
-    return round(index_price / 50) * 50
-
-def place_trade(strike, side):
-    """Live Market mein Order Place karne ka function"""
-    # Note: Trading Symbol format index aur expiry ke hisaab se hota hai
-    # Example: NIFTY20MAR2422100CE
-    trading_symbol = f"{SYMBOL_NAME}27MAR26{strike}{side}" 
-    
-    print(f"🚀 Signal Found! Placing {side} Order for {trading_symbol}")
-    
-    order_params = {
-        "variety": "NORMAL",
-        "tradingsymbol": trading_symbol,
-        "symboltoken": "TOKEN_FROM_MASTER_DATA", # Token list se lena hoga
-        "transactiontype": "BUY",
-        "exchange": "NFO",
-        "ordertype": "MARKET",
-        "producttype": "INTRADAY",
-        "duration": "DAY",
-        "quantity": LOT_SIZE
-    }
-    # order_id = obj.placeOrder(order_params)
-    # print(f"Order Placed ID: {order_id}")
-
-# --- MAIN LOOP (Live Market) ---
-print("Running Strategy: Bottom Fishing...")
-
-while True:
-    try:
-        # 1. Live Price Fetch Karein (LTP)
-        # Dummy price for logic (Real API se 'obj.ltp' use karein)
-        ltp_data = obj.ltp("NSE", "Nifty 50", "99926000") # Index token
-        current_price = ltp_data['data']['lasttradedprice']
-        
-        # 2. Strategy Logic: Bottom Kaise Pakde?
-        # Logic: Agar RSI 30 ke niche hai (Oversold) aur green candle banti hai
-        rsi_value = 25 # Yeh aapko indicator library (ta-lib) se nikalna hoga
-        
-        if rsi_value < 30: # BOTTOM SIGNAL
-            atm_strike = get_atm_strike(current_price)
-            place_trade(atm_strike, "CE")
-            break # Ek baar trade hone par loop stop (Discipline)
-            
-        time.sleep(1) # API rate limit ke liye
-        
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        break
-            
+    <footer class="mt-12 text-center text-gray-500 text-xs pb-6">
+        Designed for Angel One SmartAPI • Trading involves risk. Use responsibly.
+    </footer>
+</body>
+</html>
